@@ -66,6 +66,29 @@
       ],
       "preLaunchTask": "build cluster",
       "miDebuggerPath": "/usr/bin/gdb"
+    },
+    {
+      "name": "Debug clusterer",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${fileDirname}/build/clusterer.exe",
+      "args": [
+        "../sentence-dataset/snli/snli_1.0_dev.s2.txt"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "make clusterer",
+      "miDebuggerPath": "/usr/bin/gdb"
     }
   ]
 }
