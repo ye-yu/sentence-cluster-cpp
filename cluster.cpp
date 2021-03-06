@@ -5,6 +5,8 @@
 #include "vector"
 #include "algorithm"
 #include "regex"
+#include <chrono>
+#include "random"
 
 std::vector<std::string> sentence_token(const std::string& s) {
   std::vector<std::string> tokens;
@@ -30,29 +32,225 @@ typedef struct
   std::string sentence;
   std::vector<std::string> components;
 
-} sentence_components;
+} sentence_component;
+
+typedef struct
+{
+  int id;
+  std::vector<std::string> datapoints;
+  bool keep;
+} cluster_component;
+
+typedef struct
+{
+  float score;
+  cluster_component &value;
+} dpscore;
+
+typedef struct {
+  std::string type;
+  std::chrono::milliseconds time;
+} cluster_time;
 
 class Cluster
 {
 public:
-  Cluster(std::vector<std::string> docs, const float threshold = 0.85, const bool shuffle = true);
+  Cluster(
+    std::vector<std::string> docs,
+    const float threshold = 0.85,
+    const bool shuffle = true,
+    const std::string strategy = "char-gram",
+    const std::vector<int> grams = {3, 5}
+);
 
-  // private:
-  std::vector<sentence_components> stemmed_docs;
-  std::map<std::string, std::map<std::string, float>> similarity_context;
+  std::vector<cluster_component> clusters;
+  int rounds;
+  std::vector<cluster_time> times;
+  float threshold;
+  bool shuffle;
+  std::string strategy;
+  std::vector<int> grams;
 };
 
-Cluster::Cluster(std::vector<std::string> docs, const float threshold, const bool shuffle)
+Cluster::Cluster(
+  std::vector<std::string> docs,
+  const float threshold,
+  const bool shuffle,
+  const std::string strategy,
+  const std::vector<int> grams
+)
 {
-  std::transform(docs.begin(), docs.end(), std::back_inserter(this->stemmed_docs), [](std::string d) {
+  if (strategy != "char-gram" && strategy != "stem") {
+    perror("The choosen strategy is neither 'char-gram' nor 'stem'. It is now defaulted to 'char-gram'.");
+    this->strategy = "char-gram";
+  } else {
+    this->strategy = strategy;
+  }
+
+  this->threshold = threshold;
+  this->shuffle = shuffle;
+  this->grams = grams;
+
+  std::vector<sentence_component> stemmed_docs;
+  std::map<std::string, std::map<std::string, float>> similarity_context;
+  const auto start = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now().time_since_epoch()
+  );
+
+  for(auto d: docs) {
     std::vector<std::string> tokens = sentence_token(d);
-    std::string s;
-    for(std::string token: tokens) {
-      std::string stemmed = lancaster_stemmer(token);
-      s.append(stemmed);
+    if (this->strategy == "char-gram") {
+      std::string s;
+      for(std::string token: tokens) {
+        std::string stemmed = lancaster_stemmer(token);
+        s.append(stemmed);
+      }
+
+      std::vector<std::string> component;
+      for(auto gram: this -> grams) {
+        std::vector<std::string> grammed = char_gram(s, gram);
+        std::transform(grammed.begin(), grammed.end(), std::back_inserter(component), [](auto a) { return a; });
+      }
+      stemmed_docs.push_back(sentence_component{d, component});
+    } else {
+      std::transform(tokens.begin(), tokens.end(), tokens.begin(), ::lancaster_stemmer);
+      stemmed_docs.push_back(sentence_component{d, tokens});
     }
-    return sentence_components{d, char_gram(s, 3)};
+  }
+
+  const auto stem_end = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now().time_since_epoch()
+  );
+
+  this->times.push_back(cluster_time{
+    "stemming",
+    stem_end - start
   });
+
+  for(auto stemData: stemmed_docs) {
+    if (similarity_context.find(stemData.sentence) == similarity_context.end()) {
+      similarity_context[stemData.sentence] = std::map<std::string, float>();
+    }
+
+    for(auto simTarget: stemmed_docs) {
+      if (similarity_context.find(simTarget.sentence) == similarity_context.end()) {
+        similarity_context[simTarget.sentence] = std::map<std::string, float>();
+      }
+
+      if (!simTarget.sentence.compare(stemData.sentence)) continue;
+
+      {
+        auto test_candidate = similarity_context[stemData.sentence];
+        if (test_candidate.find(simTarget.sentence) != test_candidate.end()) continue;
+      }
+
+      {
+        auto test_candidate = similarity_context[simTarget.sentence];
+        if (test_candidate.find(stemData.sentence) != test_candidate.end()) continue;
+      }
+
+      const auto similarity_score = similarity(stemData.components, simTarget.components);
+      similarity_context[stemData.sentence][simTarget.sentence] = similarity_score;
+      similarity_context[simTarget.sentence][stemData.sentence] = similarity_score;
+    }
+  }
+
+  const auto sim_end = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now().time_since_epoch()
+  );
+
+  this->times.push_back(cluster_time{
+    "similarity",
+    sim_end - stem_end
+  });
+
+  std::vector<cluster_component> clusters;
+
+  int id = 0;
+  for(auto entry: similarity_context) {
+    const auto key = entry.first;
+    clusters.push_back(cluster_component{
+      ++id,
+      std::vector<std::string>{key},
+      true
+    });
+  }
+
+  if (shuffle) {
+    std::shuffle(clusters.begin(), clusters.end(), std::default_random_engine());
+  }
+
+
+  while(true) {
+    ++this->rounds;
+    auto repeat = false;
+    std::vector<dpscore> matches;
+    for(auto &cluster: clusters) {
+      if (!cluster.keep) continue;
+
+      for(auto &test: clusters) {
+        if (test.id == cluster.id) continue;
+        if (!test.keep) continue;
+
+        float scores = 0;
+        int dps = 0;
+        for(const auto test_dp: test.datapoints) {
+          for(const auto clust_dp: cluster.datapoints) {
+            auto smap = similarity_context[test_dp];
+            if (smap.find(clust_dp) == smap.end()) continue;
+            scores += smap[clust_dp];
+            dps++;
+          }
+        }
+
+        if (!dps) continue;
+
+        if (scores/dps < 0.8) continue; 
+        matches.push_back(dpscore{
+          scores/dps,
+          test
+        });
+      }
+
+      if (matches.empty()) continue;
+      repeat = true;
+      int highest_index = 0;
+
+      for(int i = 1; i < matches.size(); i++) {
+        if (matches[highest_index].score > matches[i].score) continue;
+        highest_index = i;
+      }
+
+      dpscore &highest = matches[highest_index];
+      highest.value.keep = false;
+      for(auto c: highest.value.datapoints) {
+        cluster.datapoints.push_back(c);
+      }
+
+      matches.clear();
+    }
+
+    if(!repeat) break;
+  }
+
+  const auto cluster_end = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now().time_since_epoch()
+  );
+
+  this->times.push_back(cluster_time{
+    "cluster",
+    cluster_end - sim_end
+  });
+
+  this->times.push_back(cluster_time{
+    "total",
+    cluster_end - start
+  });
+
+  for(auto cluster: clusters) {
+    if (!cluster.keep) continue;
+    this->clusters.push_back(cluster);
+  }
 }
 
 int main()
@@ -108,13 +306,48 @@ int main()
       "It didn't make sense unless you had the power to eat colors.",
       "Whenever he saw a red flag warning at the beach he grabbed his surfboard."};
   
-  Cluster cluster(documents);
+  Cluster cluster(documents, 0.85, true, "stem");
 
-  for(sentence_components comps: cluster.stemmed_docs) {
-    std::cout << comps.sentence << ":" << std::endl;
-    for(std::string gram: comps.components) {
-      std::cout << "  [" << gram << "] ";
+  std::string strategy_string = cluster.strategy;
+
+  if (strategy_string == "char-gram") {
+    auto gram = cluster.grams.begin();
+    strategy_string.append(" {");
+    strategy_string.append(std::to_string(*gram++));
+    for(; gram != cluster.grams.end(); gram++) {
+      strategy_string.append(" ,");
+      strategy_string.append(std::to_string(*gram));
     }
+    strategy_string.append("}");
+  }
+
+  std::cout << "Clustering " << documents.size() << " documents" << std::endl
+            << std::endl
+            << "Settings:" << std::endl
+            << "  - strategy: " << strategy_string << std::endl
+            << "  - threshold: " << cluster.threshold << std::endl
+            << "  - shuffle: " << (cluster.shuffle ? "yes" : "no") << std::endl
+            << std::endl
+            << "Analytics:" << std::endl;
+
+  for(auto time: cluster.times) {
+    std::cout << "  - " << time.type << ": " << time.time.count() << " ms" << std::endl;
+  }
+
+  
+  
+  std::cout << "  - rounds: " << cluster.rounds << " rounds" << std::endl
+            << "  - clusters: " << cluster.clusters.size() << " (" << cluster.clusters.size() * 100 / documents.size() << "%)" << std::endl
+            << std::endl 
+            << "Clusters:" << std::endl << std::endl;
+
+  for(auto instance: cluster.clusters) {
+    std::cout << "id: " << instance.id << std::endl;
+
+    for(auto sentence: instance.datapoints) {
+      std::cout << "  - " << sentence << std::endl;
+    }
+
     std::cout << std::endl;
   }
 }
