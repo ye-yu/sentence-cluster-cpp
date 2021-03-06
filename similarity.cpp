@@ -3,6 +3,7 @@
 #include "algorithm"
 #include "map"
 #include "math.h"
+#include "similarity.h"
 
 std::vector<std::string> char_gram(std::string input, const int maxgram)
 {
@@ -55,17 +56,13 @@ float cosine_similarity_vectors(std::vector<int> A, std::vector<int> B)
   return mul / (sqrt(d_a) * sqrt(d_b));
 }
 
-float similarity(std::string s1, std::string s2, const int maxgram = 3)
+float similarity(std::vector<std::string> s1grammed, std::vector<std::string> s2grammed)
 {
   std::map<std::string, int> hmap;
   std::map<std::string, int> s1map;
   std::map<std::string, int> s2map;
   std::vector<int> s1vector;
   std::vector<int> s2vector;
-
-  std::vector<std::string> s1grammed = char_gram(s1, maxgram);
-  std::vector<std::string> s2grammed = char_gram(s2, maxgram);
-
   for (auto tok : s1grammed)
   {
     hmap[tok] = 1;
@@ -102,4 +99,11 @@ float similarity(std::string s1, std::string s2, const int maxgram = 3)
   }
 
   return cosine_similarity_vectors(s1vector, s2vector);
+}
+
+float similarity(std::string s1, std::string s2, const int maxgram = 3)
+{
+  std::vector<std::string> s1grammed = char_gram(s1, maxgram);
+  std::vector<std::string> s2grammed = char_gram(s2, maxgram);
+  return similarity(s1grammed, s2grammed);
 }

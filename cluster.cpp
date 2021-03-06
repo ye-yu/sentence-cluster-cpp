@@ -39,6 +39,7 @@ public:
 
   // private:
   std::vector<sentence_components> stemmed_docs;
+  std::map<std::string, std::map<std::string, float>> similarity_context;
 };
 
 Cluster::Cluster(std::vector<std::string> docs, const float threshold, const bool shuffle)
