@@ -69,6 +69,7 @@
     "lancaster.h": "c",
     "string.h": "c",
     "regex": "cpp",
-    "shared_mutex": "cpp"
+    "shared_mutex": "cpp",
+    "cargs.h": "c"
   }
 }

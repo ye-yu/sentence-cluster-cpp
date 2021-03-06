@@ -2,6 +2,9 @@
 #include "stdio.h"
 #include "string"
 #include "iostream"
+#include "vector"
+#include <boost/filesystem.hpp>
+#include "cargs.h"
 
 FILE *fileorstdin = NULL;
 
@@ -32,10 +35,22 @@ void fileorstdinclose() {
 
 int main(int argc, char **argv) {
   if (argc >= 2) fileorstdinit(argv[1]);
+  std::string strategy_string = "strategy";
+  std::string strategy_default_string = "stem";
+  
+  str_arg *cluster_strategy = define_str_arg('s', strategy_string.c_str(), strategy_default_string.c_str());
+
   std::string buffer;
+  std::vector<std::string> docs;
   while(fileorstdinline(buffer)) {
-    std::cout << buffer << std::endl;
-    buffer = "";
+    docs.push_back(buffer);
+    buffer.clear();
   }
+
+  Cluster cluster(docs, 0.85, false, cluster_strategy->value);
+
+  cluster.print_settings();
+  cluster.print_analytics();
+
   return 0;
 }

@@ -45,7 +45,7 @@ public:
     const bool shuffle = true,
     const std::string strategy = "char-gram",
     const std::vector<gram_settings> grams = {gram_settings{3, 3}, gram_settings{5, 3}}
-);
+  );
 
   std::vector<cluster_component> clusters;
   int rounds;
@@ -54,6 +54,9 @@ public:
   bool shuffle;
   std::string strategy;
   std::vector<gram_settings> grams;
+  size_t docs_size;
+  void print_settings();
+  void print_analytics();
 };
 
 #endif
