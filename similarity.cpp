@@ -5,7 +5,7 @@
 #include "math.h"
 #include "similarity.h"
 
-std::vector<std::string> char_gram(std::string input, const int maxgram)
+std::vector<std::string> char_gram(std::string input, const int maxgram, const int stride)
 {
   std::vector<std::string> grams;
   if (input.length() <= maxgram)
@@ -14,8 +14,16 @@ std::vector<std::string> char_gram(std::string input, const int maxgram)
     return grams;
   }
 
+  const auto _stride = stride == -1 ? 0 : stride;
+  const auto should_stride = !!_stride;
+  auto stride_count = -1;
+
   for (size_t i = 0; i < input.length() - maxgram + 1; i++)
   {
+    if (should_stride) {
+      stride_count = ++stride_count % _stride;
+      if (stride_count) continue;
+    }
     grams.push_back(input.substr(i, maxgram));
   }
 

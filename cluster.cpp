@@ -52,6 +52,11 @@ typedef struct {
   std::chrono::milliseconds time;
 } cluster_time;
 
+typedef struct {
+  int size;
+  int stride;
+} gram_settings;
+
 class Cluster
 {
 public:
@@ -60,7 +65,7 @@ public:
     const float threshold = 0.85,
     const bool shuffle = true,
     const std::string strategy = "char-gram",
-    const std::vector<int> grams = {3, 5}
+    const std::vector<gram_settings> grams = {gram_settings{3, 3}, gram_settings{5, 3}}
 );
 
   std::vector<cluster_component> clusters;
@@ -69,7 +74,7 @@ public:
   float threshold;
   bool shuffle;
   std::string strategy;
-  std::vector<int> grams;
+  std::vector<gram_settings> grams;
 };
 
 Cluster::Cluster(
@@ -77,7 +82,7 @@ Cluster::Cluster(
   const float threshold,
   const bool shuffle,
   const std::string strategy,
-  const std::vector<int> grams
+  const std::vector<gram_settings> grams
 )
 {
   if (strategy != "char-gram" && strategy != "stem") {
@@ -108,7 +113,7 @@ Cluster::Cluster(
 
       std::vector<std::string> component;
       for(auto gram: this -> grams) {
-        std::vector<std::string> grammed = char_gram(s, gram);
+        std::vector<std::string> grammed = char_gram(s, gram.size, gram.stride);
         std::transform(grammed.begin(), grammed.end(), std::back_inserter(component), [](auto a) { return a; });
       }
       stemmed_docs.push_back(sentence_component{d, component});
@@ -306,17 +311,22 @@ int main()
       "It didn't make sense unless you had the power to eat colors.",
       "Whenever he saw a red flag warning at the beach he grabbed his surfboard."};
   
-  Cluster cluster(documents, 0.85, true, "stem");
+  Cluster cluster(documents, 0.85, true);
 
   std::string strategy_string = cluster.strategy;
 
   if (strategy_string == "char-gram") {
     auto gram = cluster.grams.begin();
     strategy_string.append(" {");
-    strategy_string.append(std::to_string(*gram++));
+    strategy_string.append(std::to_string(gram->size));
+    strategy_string.append(":");
+    strategy_string.append(std::to_string(gram->stride));
+    ++gram;
     for(; gram != cluster.grams.end(); gram++) {
-      strategy_string.append(" ,");
-      strategy_string.append(std::to_string(*gram));
+      strategy_string.append(", ");
+      strategy_string.append(std::to_string(gram->size));
+      strategy_string.append(":");
+      strategy_string.append(std::to_string(gram->stride));
     }
     strategy_string.append("}");
   }

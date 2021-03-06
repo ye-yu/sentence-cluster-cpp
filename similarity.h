@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-extern std::vector<std::string> char_gram(std::string input, const int maxgram);
+extern std::vector<std::string> char_gram(std::string input, const int maxgram = 3, const int stride = -1);
 extern float similarity(std::vector<std::string> s1grammed, std::vector<std::string> s2grammed);
 extern float similarity(std::string s1, std::string s2, const int maxgram);
 #endif
