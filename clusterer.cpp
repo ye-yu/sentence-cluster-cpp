@@ -76,14 +76,18 @@ int main(int argc, char **argv) {
   std::string analytics_string = "analytics";
   std::string verbose_string = "verbose";
   std::string gram_string = "gram";
+  std::string threshold_string = "threshold";
+  std::string shuffle_string = "shuffle";
   
   str_arg *cluster_strategy = define_str_arg('s', strategy_string.c_str(), strategy_default_string.c_str());
   str_arg *out_directory = define_str_arg('o', outdir_string.c_str(), NULL);
   str_arg *gram_setting_arg = define_str_arg('g', gram_string.c_str(), "3:4,7:4");
+  str_arg *threshold = define_str_arg('t', threshold_string.c_str(), "0.85");
 
   flag_arg *stdout_cluster = define_flag_arg('O', stdout_string.c_str(), false);
   flag_arg *print_analytics = define_flag_arg('a', analytics_string.c_str(), false);
   flag_arg *verbose = define_flag_arg('V', verbose_string.c_str(), false);
+  flag_arg *shuffle = define_flag_arg('r', shuffle_string.c_str(), true);
 
   process_args(argc, argv);
 
@@ -105,8 +109,7 @@ int main(int argc, char **argv) {
   }
 
   Cluster cluster;
-  cluster.threshold = 0.85;
-  cluster.shuffle = true;
+  cluster.shuffle = !!shuffle->value;
   cluster.add_docs(docs);
 
   try {
@@ -116,6 +119,16 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Exceptions in parsing gram settings! Reason: %s\n", e.what());
     fprintf(stderr, "Using default gram settings (if applicable).\n");
     cluster.stem_strategy(cluster_strategy->value);
+  }
+
+  try {
+    float t = std::stof(threshold->value);
+    if (t > 1) throw std::runtime_error("Threshold cannot be more than 1.");
+    if (t < 0) throw std::runtime_error("Threshold cannot be less than 1.");
+    cluster.threshold = t;
+  } catch (const std::exception& e) {
+    fprintf(stderr, "Exceptions in parsing threshold! Reason: %s\n", e.what());
+    fprintf(stderr, "Using default threshold.\n");
   }
 
   if(verbose->value){
