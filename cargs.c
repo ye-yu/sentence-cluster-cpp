@@ -47,7 +47,13 @@ flag_arg *define_flag_arg(char short_name, const char *long_name, int def_val) {
     }
   }
   flag_args[flag_arg_len].short_name = short_name;
-  flag_args[flag_arg_len].long_name = long_name;
+
+  const int lname_len = (strlen(long_name == NULL ? "" : long_name) + 1);
+  char *lname_buf = malloc(sizeof(char *) * lname_len);
+  for (size_t i = 0; i < lname_len; i++) lname_buf[i] = '\0';
+  strcpy(lname_buf, long_name == NULL ? "" : long_name);
+
+  flag_args[flag_arg_len].long_name = lname_buf;
   flag_args[flag_arg_len].value = def_val;
   flag_arg_len += 1;
   return flag_args + flag_arg_len - 1;
@@ -74,8 +80,23 @@ str_arg *define_str_arg(char short_name, const char *long_name, const char *def_
     }
   }
   str_args[str_arg_len].short_name = short_name;
-  str_args[str_arg_len].long_name = long_name;
-  str_args[str_arg_len].value = def_val;
+  {
+    const int lname_len = (strlen(long_name == NULL ? "" : long_name) + 1);
+    char *lname_buf = malloc(sizeof(char *) * lname_len);
+    for (size_t i = 0; i < lname_len; i++) lname_buf[i] = '\0';
+    strcpy(lname_buf, long_name == NULL ? "" : long_name);
+    
+    str_args[str_arg_len].long_name = lname_buf;
+  }
+
+  {
+    const int dval_len = (strlen(def_val == NULL ? "" : def_val) + 1);
+    char *dval_buf = malloc(sizeof(char *) * dval_len);
+    for (size_t i = 0; i < dval_len; i++) dval_buf[i] = '\0';
+    strcpy(dval_buf, def_val == NULL ? "" : def_val);
+    
+    str_args[str_arg_len].value = dval_buf;
+  }
   str_arg_len += 1;
   return str_args + str_arg_len - 1;
 }
@@ -301,11 +322,13 @@ int process_args(int argc, char **argv) {
 
 void free_args() {
   if (flag_args != NULL) {
+    for (size_t i = 0; i < flag_arg_len; i++) free(flag_args[i].long_name);
     free(flag_args);
     flag_arg_len = 0;
     flag_arg_allocated = 0;
   }
   if (str_args != NULL) {
+    for (size_t i = 0; i < str_arg_len; i++) free(str_args[i].long_name);
     free(str_args);
     str_arg_len = 0;
     str_arg_allocated = 0;
