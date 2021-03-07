@@ -71,7 +71,7 @@
       "name": "Debug clusterer",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${fileDirname}/build/clusterer.exe",
+      "program": "${workspaceFolder}/build/clusterer.exe",
       "args": [
         "../sentence-dataset/snli/snli_1.0_dev.s2.txt"
       ],

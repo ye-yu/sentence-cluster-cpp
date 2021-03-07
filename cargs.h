@@ -22,6 +22,7 @@ extern str_arg *define_str_arg(char short_name, const char *long_name, const cha
 extern char **get_args_array();
 
 extern int process_args(int argc, char **argv);
+
 extern void free_args();
 #ifdef __cplusplus
 }
