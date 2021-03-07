@@ -40,11 +40,13 @@ int main(int argc, char **argv) {
   std::string outdir_string = "out";
   std::string stdout_string = "stdout";
   std::string analytics_string = "analytics";
+  std::string verbose_string = "verbose";
   
   str_arg *cluster_strategy = define_str_arg('s', strategy_string.c_str(), strategy_default_string.c_str());
   str_arg *out_directory = define_str_arg('o', outdir_string.c_str(), NULL);
   flag_arg *stdout_cluster = define_flag_arg('O', stdout_string.c_str(), false);
   flag_arg *print_analytics = define_flag_arg('a', analytics_string.c_str(), false);
+  flag_arg *verbose = define_flag_arg('V', verbose_string.c_str(), false);
 
   process_args(argc, argv);
 
@@ -64,9 +66,19 @@ int main(int argc, char **argv) {
     buffer.clear();
   }
 
-  Cluster cluster(docs, 0.85, false, cluster_strategy->value);
+  Cluster cluster;
+  cluster.threshold = 0.85;
+  cluster.shuffle = true;
+  cluster.add_docs(docs);
+  cluster.stem_strategy(cluster_strategy->value);
 
-  cluster.print_settings();
+  if(verbose->value){
+    cluster.print_settings();
+    std::cout << std::endl;
+  }
+
+  cluster.fit();
+
   if (print_analytics->value) {
     std::cout << std::endl;
     cluster.print_analytics();
@@ -102,6 +114,8 @@ int main(int argc, char **argv) {
       fclose(f);
     }
   }
+
+  free_args();
 
   return 0;
 }

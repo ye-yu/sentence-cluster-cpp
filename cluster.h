@@ -34,18 +34,12 @@ typedef struct {
 typedef struct {
   int size;
   int stride;
-} gram_settings;
+} gram_setting;
 
 class Cluster
 {
 public:
-  Cluster(
-    std::vector<std::string> docs,
-    const float threshold = 0.85,
-    const bool shuffle = true,
-    const std::string strategy = "char-gram",
-    const std::vector<gram_settings> grams = {gram_settings{3, 3}, gram_settings{5, 3}}
-  );
+  Cluster();
 
   std::vector<cluster_component> clusters;
   int rounds;
@@ -53,10 +47,16 @@ public:
   float threshold;
   bool shuffle;
   std::string strategy;
-  std::vector<gram_settings> grams;
-  size_t docs_size;
+  std::vector<gram_setting> grams;
+  std::vector<std::string> documents;
   void print_settings();
   void print_analytics();
+  void fit();
+  void add_docs(std::vector<std::string> docs);
+  void stem_strategy(
+    std::string strategy,
+    std::vector<gram_setting> gram_setting = {gram_setting{3, 3}, gram_setting{3, 5}}
+  );
 };
 
 #endif

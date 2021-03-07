@@ -71,6 +71,7 @@
     "regex": "cpp",
     "shared_mutex": "cpp",
     "cargs.h": "c",
-    "filesystem": "cpp"
+    "filesystem": "cpp",
+    "codecvt": "cpp"
   }
 }

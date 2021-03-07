@@ -51,26 +51,32 @@ std::vector<std::string> sentence_token(const std::string& s) {
   return tokens;
 }
 
-Cluster::Cluster(
-  std::vector<std::string> docs,
-  const float threshold,
-  const bool shuffle,
-  const std::string strategy,
-  const std::vector<gram_settings> grams
-)
-{
+void Cluster::add_docs(std::vector<std::string> docs) {
+  std::transform(docs.begin(), docs.end(), std::back_inserter(this -> documents), [](auto a){ return a;});
+}
+
+void Cluster::stem_strategy(std::string strategy, std::vector<gram_setting> gram_settings) {
   if (strategy != "char-gram" && strategy != "stem") {
-    fprintf(stderr, "%s\n", "The choosen strategy is neither 'char-gram' nor 'stem'. It is now defaulted to 'char-gram'.");
+    fprintf(stderr, "The choosen strategy is neither 'char-gram' nor 'stem'. It is now defaulted to 'char-gram'.\n");
     this->strategy = "char-gram";
   } else {
     this->strategy = strategy;
   }
 
-  this->docs_size = docs.size();
-  this->threshold = threshold;
-  this->shuffle = shuffle;
-  this->grams = grams;
+  if (gram_settings.empty()) {
+    fprintf(stderr, "Gram settings cannot be empty. Defaulting to {3:3,5:3}.\n");
+  } else {
+    this->grams.clear();
+    std::transform(gram_settings.begin(), gram_settings.end(), std::back_inserter(this->grams), [](auto a){return a;});
+  }
+}
 
+void Cluster::fit() {
+  if (this->documents.empty()) {
+    fprintf(stderr, "No documents to cluster yet!");
+    return;
+  }
+  if (!this->clusters.empty()) return;
   std::vector<sentence_component> stemmed_docs;
   std::map<std::string, std::map<std::string, float>> similarity_context;
   const auto start = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -80,8 +86,8 @@ Cluster::Cluster(
   init_progress("Stemming documents");
   static int docs_progress;
   docs_progress = 0;
-  for(auto d: docs) {
-    update_progress(++docs_progress, docs.size(), "Stemming documents");
+  for(auto d: this->documents) {
+    update_progress(++docs_progress, this->documents.size(), "Stemming documents");
     std::vector<std::string> tokens = sentence_token(d);
     if (this->strategy == "char-gram") {
       std::string s;
@@ -166,13 +172,12 @@ Cluster::Cluster(
     });
   }
 
-  if (shuffle) {
+  if (this->shuffle) {
     std::shuffle(clusters.begin(), clusters.end(), std::default_random_engine());
   }
 
   this->rounds = 0;
   while(true) {
-
     ++this->rounds;
     auto repeat = false;
     std::vector<dpscore> matches;
@@ -202,7 +207,7 @@ Cluster::Cluster(
 
         if (!dps) continue;
 
-        if (scores/dps < 0.8) continue; 
+        if (scores/dps < this->threshold) continue; 
         matches.push_back(dpscore{
           scores/dps,
           test
@@ -277,13 +282,24 @@ void Cluster::print_settings() {
 }
 
 void Cluster::print_analytics() {
-  std::cout << "Analytics:" << std::endl;
-
-  for(auto time: this->times) {
-    std::cout << "  - " << time.type << ": " << time.time.count() << " ms" << std::endl;
+  if (this->clusters.empty()) {
+    fprintf(stderr, "No clustering has been performed yet!\n");
+    return;
   }
 
+  std::cout << "Analytics:" << std::endl;
+
+  for(auto time: this->times) std::cout << "  - " << time.type << ": " << time.time.count() << " ms" << std::endl;
+
   std::cout << "  - rounds: " << this->rounds << " rounds" << std::endl
-            << "  - clusters: " << this->clusters.size() << " (" << this->clusters.size() * 100 / this->docs_size << "%)" << std::endl
+            << "  - clusters: " << this->clusters.size() << " (" << this->clusters.size() * 100 / this->documents.size() << "%)" << std::endl
             << std::endl;
+}
+
+Cluster::Cluster() {
+  this->threshold=0.85;
+  this->shuffle-true;
+  this->strategy="char-gram";
+  this->grams.push_back(gram_setting{3, 3});
+  this->grams.push_back(gram_setting{5, 3});
 }
