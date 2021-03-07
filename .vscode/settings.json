@@ -72,6 +72,7 @@
     "shared_mutex": "cpp",
     "cargs.h": "c",
     "filesystem": "cpp",
-    "codecvt": "cpp"
+    "codecvt": "cpp",
+    "stdlib.h": "c"
   }
 }

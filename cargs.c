@@ -172,6 +172,8 @@ int determine_combinations(char *arg, flag_arg **f_arg_buf, str_arg **s_arg_buf)
 
     flag_arg * f_arg_match = find_bool_rule_long(param);
     if (f_arg_match != NULL) {
+      // simultaneously set the value true
+      f_arg_match->value=1;
       *f_arg_buf = f_arg_match;
       return FLAG_ARG_LONG;
     }
@@ -300,6 +302,7 @@ int process_args(int argc, char **argv) {
         flg_arg_target = NULL;
         continue;
       }
+      flg_arg_target = NULL;
     }
     if (str_arg_target == NULL) {
       if (arg[0] != '-') {

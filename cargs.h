@@ -41,6 +41,8 @@ extern char **get_args_array();
 extern int process_args(int argc, char **argv);
 
 extern void free_args();
+
+extern char **get_arg_error_msgs();
 #ifdef __cplusplus
 }
 #endif

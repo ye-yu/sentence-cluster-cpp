@@ -106,7 +106,17 @@ int main(int argc, char **argv) {
   flag_arg *verbose = define_flag_arg('V', verbose_string.c_str(), false);
   flag_arg *shuffle = define_flag_arg('r', shuffle_string.c_str(), true);
 
-  process_args(argc, argv);
+  if (process_args(argc, argv)) {
+    char ** errors = get_arg_error_msgs();
+
+    fprintf(stderr, "%s", errors[0]);
+    if (!std::string(errors[1]).empty()) {
+      fprintf(stderr, ": %s", errors[1]);
+    }
+    puts("");
+    free_args();
+    return 1;
+  };
 
   std::string outdir(out_directory->value);
   if (!outdir.empty()) {
