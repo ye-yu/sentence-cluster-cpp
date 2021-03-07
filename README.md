@@ -59,11 +59,13 @@ This means the 3-grams will be performed on the string with 2 characters stride.
 
 This will print all cluster result to the standard output. The default value is `false`.
 
-### `--outdir (`-o`)
+### `--outdir` (`-o`)
 
 This will create a collection of files for each cluster in the selected output directory. The default value is empty.
 
 ## Quick example
+
+Run this to run a quick test on the program.
 
 ```sh
 mkdir build
